@@ -1,7 +1,7 @@
 {
   "name": "dsh-toc-tail",
   "version": "0.1.0",
-  "description": "对话目录尾栏：对话列右侧的轻量 TOC Tail，把对话中的每条用户请求压缩为一条横线，形成纵向时间轴，作为对话的空间索引与快速导航入口。纯 client 插件。",
+  "description": "对话目录尾栏 + 回溯：对话列右侧的轻量 TOC Tail，把每条用户请求压缩为一条横线形成纵向时间轴；目录面板支持一键回溯到任意用户请求节点（折叠其后的对话，可选 LLM 总结与代码状态恢复）。",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -36,21 +36,29 @@
     }
   },
   "scripts": {
-    "build:types": "tsc -p tsconfig.build.json",
-    "build": "npm run build:types && tsdown",
+    "build:types": "tsc -p tsconfig.build.host.json && tsc -p tsconfig.build.client.json",
+    "build": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\" && npm run build:types && tsdown",
     "typecheck": "tsc -p tsconfig.host.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "test": "vitest run",
     "verify": "npm run typecheck && npm run build && npm run test"
   },
+  "dependencies": {
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6"
+  },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-locale": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-layout": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-commands": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "0.1.0-rc.6",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.3.2",
+    "@types/node": "^26.2.0",
     "@types/react": "~18.3.1",
     "jsdom": "29.1.1",
     "lightningcss": "^1.33.0",

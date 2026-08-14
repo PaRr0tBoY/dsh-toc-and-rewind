@@ -5,7 +5,9 @@
     "declaration": true,
     "declarationMap": true,
     "rootDir": "src",
-    "outDir": "lib/types"
+    "outDir": "lib/types",
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src/index.ts", "src/rewind/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.spec.tsx"]
 }

@@ -66,7 +66,19 @@ export function apply(ctx: ClientContext): void {
       id: 'toc-tail',
       order: 100,
       locale: NS,
-      inject: (): TocTailInjected => ({ controllerFor }),
+      inject: (): TocTailInjected => ({
+        controllerFor,
+        // The client cannot fold a session itself (ISession has no history
+        // verbs); it submits the rewind to the host half via the slash
+        // command channel, exactly as the directory panel's confirm menu.
+        rewind: (sessionId, seq, options) => {
+          const session = ctx.sessions.binding(sessionId)?.session
+          if (session === undefined) return Promise.reject(new Error('no session binding'))
+          const flags = [options.code ? 'code' : '', options.summary ? 'summary' : '']
+            .filter(Boolean).join(' ')
+          return session.command(`/toc-rewind ${seq}${flags === '' ? '' : ` ${flags}`}`)
+        },
+      }),
     }, TocTail)
     return () => {
       dispose()

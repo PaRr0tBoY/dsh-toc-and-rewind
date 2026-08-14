@@ -3,3 +3,4 @@ lib/
 *.tsbuildinfo
 .reasonix/
 reasonix.toml
+toc-tail/snapshots/

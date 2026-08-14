@@ -57,7 +57,16 @@ function sourceAssetPath(source: string, importer: string): string {
   return resolvePath(emitted.slice(0, boundary), 'src', emitted.slice(boundary + marker.length))
 }
 
-/** Node half: the empty host apply, so the Loader can import the plugin. */
+/** Host-side runtime externals (the dsh host application provides them). */
+const HOST_EXTERNALS: readonly string[] = [
+  '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-agent',
+  '@deepseek-ai/dsh-commands',
+  '@deepseek-ai/dsh-llm',
+  '@deepseek-ai/dsh-session',
+]
+
+/** Node half: the host apply (rewind engine), with host deps left external. */
 const lib: UserConfig = {
   name: ID,
   entry: { index: 'lib/types/index.js' },
@@ -68,6 +77,10 @@ const lib: UserConfig = {
   fixedExtension: false,
   dts: false,
   clean: false,
+  deps: {
+    neverBundle: [...HOST_EXTERNALS],
+    alwaysBundle: (id: string) => !HOST_EXTERNALS.includes(id),
+  },
 }
 
 /** Browser half: closure-factory bundle emitted next to the node half. */

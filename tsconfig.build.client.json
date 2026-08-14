@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "rootDir": "src/client",
+    "outDir": "lib/types/client"
+  },
+  "include": ["src/css-modules.d.ts", "src/client"],
+  "exclude": ["src/client/**/*.spec.ts", "src/client/**/*.spec.tsx"]
+}

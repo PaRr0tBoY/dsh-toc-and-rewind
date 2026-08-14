@@ -158,8 +158,9 @@ function mount(options: {
   const scrollport = mountScrollport(options.rows ?? [], options.width)
   const scrollTo = vi.fn()
   Object.defineProperty(scrollport, 'scrollTo', { value: scrollTo, configurable: true })
-  const view = render(<TocTail controllerFor={controllerFor} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
-  return { ...view, session, controller, controllerFor, scrollport, scrollTo }
+  const rewind = vi.fn<TocTailInjected['rewind']>().mockResolvedValue(undefined)
+  const view = render(<TocTail controllerFor={controllerFor} rewind={rewind} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
+  return { ...view, session, controller, controllerFor, rewind, scrollport, scrollTo }
 }
 
 describe('TocTail', () => {
@@ -197,7 +198,7 @@ describe('TocTail', () => {
     const listState = { ids: [], byId: {}, current: sid('s1'), phase: 'ready' as const, subagentsByParent: {}, jobsBySession: {} }
     const useSessions = ((selector: (state: typeof listState) => unknown) => selector(listState)) as never
     const useWorkspaces = (() => undefined) as never
-    const { container } = render(<TocTail controllerFor={controllerFor} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
+    const { container } = render(<TocTail controllerFor={controllerFor} rewind={() => Promise.resolve()} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
     await new Promise(resolve => setTimeout(resolve, 30))
     expect(container.querySelector('[role="navigation"]')).toBeNull()
     controller.dispose()
@@ -315,8 +316,8 @@ describe('TocTail', () => {
     })
   })
 
-  it('navigates from a directory item click and closes on mouse leave', async () => {
-    const { container, scrollTo } = mount({
+  it('opens a confirm menu on row click and submits the rewind', async () => {
+    const { container, rewind } = mount({
       rows: [
         { key: 'user:1', top: 100, bottom: 150 },
         { key: 'user:2', top: 300, bottom: 350 },
@@ -330,10 +331,59 @@ describe('TocTail', () => {
     await waitFor(() => {
       expect(container.querySelector('[role="list"]')).not.toBeNull()
     })
-    const items = [...container.querySelectorAll('[role="listitem"]')]
-    fireEvent.click(items[1]!)
-    expect(scrollTo).toHaveBeenCalledTimes(1)
-    expect(scrollTo).toHaveBeenCalledWith({ top: 300, behavior: 'smooth' })
+    // Clicking a directory row turns it into the confirm menu.
+    fireEvent.click([...container.querySelectorAll('[role="listitem"]')][1]!)
+    await waitFor(() => {
+      expect(container.textContent).toContain(zh['confirm.title'])
+      expect(container.textContent).toContain(zh['confirm.code'])
+      expect(container.textContent).toContain(zh['confirm.summary'])
+    })
+    // Select both post-rewind actions and confirm.
+    const checkboxes = [...container.querySelectorAll('input[type="checkbox"]')]
+    fireEvent.click(checkboxes[0]!)
+    fireEvent.click(checkboxes[1]!)
+    const ok = [...container.querySelectorAll('button')].find(button => button.textContent === zh['confirm.ok'])
+    fireEvent.click(ok!)
+    await waitFor(() => {
+      expect(rewind).toHaveBeenCalledTimes(1)
+      expect(rewind).toHaveBeenCalledWith(sid('s1'), 2, { code: true, summary: true })
+    })
+    // The directory closes once the rewind settled.
+    await waitFor(() => {
+      expect(container.querySelector('[role="list"]')).toBeNull()
+    })
+  })
+
+  it('cancels the confirm menu back to the row', async () => {
+    const { container, rewind } = mount()
+    await waitFor(() => {
+      expect(container.querySelectorAll('button')).toHaveLength(3)
+    })
+    fireEvent.mouseEnter([...container.querySelectorAll('button')][0]!)
+    await waitFor(() => {
+      expect(container.querySelector('[role="list"]')).not.toBeNull()
+    })
+    fireEvent.click([...container.querySelectorAll('[role="listitem"]')][0]!)
+    await waitFor(() => {
+      expect(container.textContent).toContain(zh['confirm.title'])
+    })
+    const cancel = [...container.querySelectorAll('button')].find(button => button.textContent === zh['confirm.cancel'])
+    fireEvent.click(cancel!)
+    await waitFor(() => {
+      expect(container.textContent).not.toContain(zh['confirm.title'])
+      expect(rewind).not.toHaveBeenCalled()
+    })
+  })
+
+  it('closes the directory on mouse leave', async () => {
+    const { container } = mount()
+    await waitFor(() => {
+      expect(container.querySelectorAll('button')).toHaveLength(3)
+    })
+    fireEvent.mouseEnter([...container.querySelectorAll('button')][0]!)
+    await waitFor(() => {
+      expect(container.querySelector('[role="list"]')).not.toBeNull()
+    })
     fireEvent.mouseLeave(container.querySelector('[role="navigation"]')!)
     await waitFor(() => {
       expect(container.querySelector('[role="list"]')).toBeNull()
@@ -350,7 +400,7 @@ describe('TocTail', () => {
     const scrollport = mountScrollport([{ key: 'user:1', top: 100, bottom: 150 }])
     const scrollTo = vi.fn()
     Object.defineProperty(scrollport, 'scrollTo', { value: scrollTo, configurable: true })
-    const { unmount } = render(<TocTail controllerFor={controllerFor} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
+    const { unmount } = render(<TocTail controllerFor={controllerFor} rewind={() => Promise.resolve()} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
     await waitFor(() => {
       expect(controller.getSnapshot().status).toBe('ready')
     })
