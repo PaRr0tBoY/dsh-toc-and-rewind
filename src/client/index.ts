@@ -20,16 +20,19 @@ import { TocController } from './controller.ts'
 import { TocTail } from './TocTail.tsx'
 import type { TocTailInjected } from './TocTail.tsx'
 import { en, zh } from './locales.ts'
+import { registerRewindMarker } from './rewind-node.tsx'
 
 export type { TocEntry, TocView, TocController } from './controller.ts'
 export type { TocTailProps, TocTailInjected } from './TocTail.tsx'
 export type { TocTailKey } from './locales.ts'
+export type { RewindMarkerNode } from './rewind-node.tsx'
 
 /** Dictionary namespace owned by this plugin. */
 const NS = 'toc-tail'
 
-/** Required services: the slot registry, the sessions service, and the copy. */
-export const inject = ['slots', 'sessions', 'locale']
+/** Required services: the slot registry, the sessions service, the copy,
+ * and the conversation event registry (rewind marker nodes). */
+export const inject = ['slots', 'sessions', 'locale', 'conversationEvents']
 
 /**
  * Client plugin body: the TOC Tail rail and its per-session object layer.
@@ -37,6 +40,10 @@ export const inject = ['slots', 'sessions', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'toc-tail: dictionaries')
+
+  // The fold replacement message renders as a marker card at the flow bottom;
+  // its shadowed seqs drive the rail's hiding and pruning.
+  registerRewindMarker(ctx)
 
   const controllers = new Map<SessionId, TocController>()
   const controllerFor = (sessionId: SessionId): TocController | null => {

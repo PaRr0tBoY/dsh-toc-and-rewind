@@ -97,12 +97,21 @@ export function tickWidthFor(
 
 /**
  * Extract the visible user messages from one conversation snapshot, in
- * conversation (event seq) order. Pure.
+ * conversation (event seq) order. Entries shadowed by a rewind fold (their
+ * seq listed in a `toc-rewind` marker) are dropped so the rail only indexes
+ * the surviving conversation. Pure.
  * @param snapshot - live conversation snapshot.
- * @returns one {@link TocEntry} per user message.
+ * @returns one {@link TocEntry} per visible user message.
  */
 export function extractUserEntries(snapshot: ConversationSnapshot): TocEntry[] {
   const nodes: ChatConversationViewNode[] = []
+  const shadowed = new Set<number>()
+  for (const node of snapshot.chat.nodes.values()) {
+    if (node.kind === 'toc-rewind') {
+      const data = node.data as { readonly shadowedSeqs?: readonly number[] }
+      for (const seq of data.shadowedSeqs ?? []) shadowed.add(seq)
+    }
+  }
   for (const node of snapshot.chat.nodes.values()) {
     if (node.kind === 'user' && node.visibility !== 'hidden') nodes.push(node)
   }
@@ -110,6 +119,7 @@ export function extractUserEntries(snapshot: ConversationSnapshot): TocEntry[] {
   const entries: TocEntry[] = []
   for (const node of nodes) {
     const data = node.data as UserMessageNode
+    if (shadowed.has(data.seq)) continue
     entries.push({
       key: node.key,
       seq: data.seq,
@@ -119,6 +129,38 @@ export function extractUserEntries(snapshot: ConversationSnapshot): TocEntry[] {
     })
   }
   return entries
+}
+
+/** Snapshot-derived state the rail needs beyond the entry list. */
+export interface TocDerived {
+  /** Surface seqs shadowed by every rewind fold (hidden from the flow). */
+  readonly shadowedSeqs: ReadonlySet<number>
+  /** Chat node key → anchor seq, the DOM-hiding bridge. */
+  readonly nodesByKey: ReadonlyMap<string, number>
+}
+
+const EMPTY_DERIVED: TocDerived = Object.freeze({
+  shadowedSeqs: Object.freeze(new Set<number>()),
+  nodesByKey: Object.freeze(new Map<string, number>()),
+})
+
+/**
+ * Project one conversation snapshot into the rail's derived state: shadowed
+ * seqs (from `toc-rewind` markers) and the key→anchorSeq map. Pure.
+ * @param snapshot - live conversation snapshot.
+ * @returns derived state.
+ */
+export function deriveTocState(snapshot: ConversationSnapshot): TocDerived {
+  const shadowedSeqs = new Set<number>()
+  const nodesByKey = new Map<string, number>()
+  for (const node of snapshot.chat.nodes.values()) {
+    nodesByKey.set(node.key, node.anchorSeq)
+    if (node.kind === 'toc-rewind') {
+      const data = node.data as { readonly shadowedSeqs?: readonly number[] }
+      for (const seq of data.shadowedSeqs ?? []) shadowedSeqs.add(seq)
+    }
+  }
+  return Object.freeze({ shadowedSeqs, nodesByKey })
 }
 
 /** One flow row in viewport coordinates. */
@@ -169,6 +211,7 @@ export function activeUserKey(
  */
 export class TocController implements HostObservable<TocView> {
   private view: TocView = COLD_VIEW
+  private derived: TocDerived = EMPTY_DERIVED
   private readonly listeners = new Set<() => void>()
   private unsubscribe: (() => void) | null = null
   private disposed = false
@@ -180,6 +223,12 @@ export class TocController implements HostObservable<TocView> {
 
   /** Return the cached immutable view. */
   getSnapshot = (): TocView => this.view
+
+  /**
+   * Return the snapshot-derived rail state (shadowed seqs + key→seq map),
+   * always consistent with the current view (same snapshot generation).
+   */
+  getDerived = (): TocDerived => this.derived
 
   /** Subscribe to view replacement; starts the snapshot subscription on demand. */
   subscribe = (listener: () => void): (() => void) => {
@@ -197,7 +246,7 @@ export class TocController implements HostObservable<TocView> {
    */
   resync(): void {
     if (this.disposed) return
-    this.publish(extractUserEntries(this.session.getSnapshot()))
+    this.publishFrom(this.session.getSnapshot())
   }
 
   /** Drop subscribers, stop the snapshot subscription, and refuse further work. */
@@ -212,9 +261,9 @@ export class TocController implements HostObservable<TocView> {
     if (this.unsubscribe !== null) return
     this.unsubscribe = this.session.subscribe(() => {
       if (this.disposed) return
-      this.publish(extractUserEntries(this.session.getSnapshot()))
+      this.publishFrom(this.session.getSnapshot())
     })
-    this.publish(extractUserEntries(this.session.getSnapshot()))
+    this.publishFrom(this.session.getSnapshot())
   }
 
   /** Stop listening when the last subscriber leaves. */
@@ -223,9 +272,10 @@ export class TocController implements HostObservable<TocView> {
     this.unsubscribe = null
   }
 
-  /** Replace the view and contain subscriber failures at the observable boundary. */
-  private publish(entries: readonly TocEntry[]): void {
-    this.view = Object.freeze({ status: 'ready' as const, entries })
+  /** Replace view + derived state and contain subscriber failures. */
+  private publishFrom(snapshot: ConversationSnapshot): void {
+    this.derived = deriveTocState(snapshot)
+    this.view = Object.freeze({ status: 'ready' as const, entries: extractUserEntries(snapshot) })
     for (const listener of this.listeners) {
       try {
         listener()

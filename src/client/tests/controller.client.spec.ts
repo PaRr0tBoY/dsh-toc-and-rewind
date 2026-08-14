@@ -10,7 +10,7 @@ import type {
   ChatConversationViewNode, ConversationSnapshot, ObservableSnapshot, SessionId, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import {
-  activeUserKey, extractUserEntries, summarize, tickWidthFor, TocController,
+  activeUserKey, deriveTocState, extractUserEntries, summarize, tickWidthFor, TocController,
 } from '../controller.ts'
 
 const sid = (k: string): SessionId => k as SessionId
@@ -160,6 +160,40 @@ describe('extractUserEntries', () => {
 
   it('returns an empty list for a snapshot without user messages', () => {
     expect(extractUserEntries(makeSnapshot([]))).toEqual([])
+  })
+
+  it('drops user entries shadowed by a rewind fold', () => {
+    const marker = {
+      key: 'rewind:9',
+      kind: 'toc-rewind',
+      id: '9',
+      target: 'chat',
+      data: { kind: 'toc-rewind', seq: 9, time: 9000, text: 'marker', shadowedSeqs: [2, 3] },
+      anchorSeq: 9,
+      location: { turn: 2, step: 1, status: 'closed', data: { get: () => undefined } },
+      visibility: 'visible',
+    } as unknown as ChatConversationViewNode
+    const snapshot = makeSnapshot([userNode(1, 'first'), userNode(2, 'second'), userNode(3, 'third'), marker])
+    expect(extractUserEntries(snapshot).map(entry => entry.seq)).toEqual([1])
+  })
+})
+
+describe('deriveTocState', () => {
+  it('maps chat keys to anchor seqs and collects shadowed seqs from markers', () => {
+    const marker = {
+      key: 'rewind:9',
+      kind: 'toc-rewind',
+      id: '9',
+      target: 'chat',
+      data: { kind: 'toc-rewind', seq: 9, time: 9000, text: 'marker', shadowedSeqs: [2, 3] },
+      anchorSeq: 9,
+      location: { turn: 2, step: 1, status: 'closed', data: { get: () => undefined } },
+      visibility: 'visible',
+    } as unknown as ChatConversationViewNode
+    const state = deriveTocState(makeSnapshot([userNode(1, 'a'), marker]))
+    expect(state.nodesByKey.get('user:1')).toBe(1)
+    expect(state.nodesByKey.get('rewind:9')).toBe(9)
+    expect([...state.shadowedSeqs]).toEqual([2, 3])
   })
 })
 

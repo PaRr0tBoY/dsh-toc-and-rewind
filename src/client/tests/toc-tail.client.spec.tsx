@@ -137,12 +137,26 @@ function translate(key: string, params?: Record<string, unknown>): string {
 /** Boot the rail over a fake session and current selection. */
 function mount(options: {
   nodes?: ChatConversationViewNode[]
+  markers?: { seq: number; shadowedSeqs: number[] }[]
   current?: SessionId
   width?: number
   rows?: { key: string; kind?: string; top: number; bottom: number }[]
 } = {}) {
-  const session = fakeSession(makeSnapshot(options.nodes ?? [
-    userNode(1, 'first'), userNode(2, 'second'), userNode(3, 'third'),
+  const markerNodes = (options.markers ?? []).map(({ seq, shadowedSeqs }) => ({
+    key: `rewind:${seq}`,
+    kind: 'toc-rewind',
+    id: String(seq),
+    target: 'chat',
+    data: { kind: 'toc-rewind', seq, time: seq * 1000, text: 'marker', shadowedSeqs },
+    anchorSeq: seq,
+    location: { turn: 2, step: 1, status: 'closed', data: { get: () => undefined } },
+    visibility: 'visible',
+  }) as unknown as ChatConversationViewNode)
+  const session = fakeSession(makeSnapshot([
+    ...(options.nodes ?? [
+      userNode(1, 'first'), userNode(2, 'second'), userNode(3, 'third'),
+    ]),
+    ...markerNodes,
   ]))
   const controller = new TocController(session.face)
   const controllerFor = vi.fn<TocTailInjected['controllerFor']>((id: SessionId) => {
@@ -230,6 +244,34 @@ describe('TocTail', () => {
     expect(shortWidth).toBeGreaterThan(0)
   })
 
+  it('prunes ticks and hides flow rows shadowed by a rewind', async () => {
+    const { container, scrollport } = mount({
+      nodes: [
+        userNode(1, 'first'), userNode(2, 'second'), userNode(3, 'third'),
+        userNode(4, 'fourth'), userNode(5, 'fifth'),
+      ],
+      markers: [{ seq: 99, shadowedSeqs: [3, 4] }],
+      rows: [
+        { key: 'user:1', top: 100, bottom: 150 },
+        { key: 'user:2', top: 300, bottom: 350 },
+        { key: 'user:3', top: 500, bottom: 550 },
+        { key: 'user:4', top: 700, bottom: 750 },
+        { key: 'user:5', top: 900, bottom: 950 },
+      ],
+    })
+    // Shadowed user requests lose their ticks (1, 2, 5 survive).
+    await waitFor(() => {
+      expect(container.querySelectorAll('button')).toHaveLength(3)
+    })
+    // And their flow rows collapse out of the DOM flow.
+    await waitFor(() => {
+      const rows = [...scrollport.querySelectorAll<HTMLElement>('[data-chat-anchor-key]')]
+      expect(rows.find(r => r.dataset.chatAnchorKey === 'user:3')?.style.display).toBe('none')
+      expect(rows.find(r => r.dataset.chatAnchorKey === 'user:4')?.style.display).toBe('none')
+      expect(rows.find(r => r.dataset.chatAnchorKey === 'user:1')?.style.display).toBe('')
+    })
+  })
+
   it('navigates to the clicked request through the scrollport', async () => {
     const { container, scrollTo } = mount({
       rows: [
@@ -288,7 +330,7 @@ describe('TocTail', () => {
     await waitFor(() => {
       // The directory replaces the rail and lists every request.
       expect(container.querySelector('[role="list"]')).not.toBeNull()
-      expect(container.querySelectorAll('button')).toHaveLength(3) // directory items only
+      expect(container.querySelectorAll('button')).toHaveLength(6) // 3 rows × (summary + rewind)
       expect(container.textContent).toContain('first')
       expect(container.textContent).toContain('third')
     })
@@ -309,14 +351,37 @@ describe('TocTail', () => {
     fireEvent.mouseEnter([...container.querySelectorAll('button')][2]!)
     await waitFor(() => {
       expect(container.querySelector('[role="list"]')).not.toBeNull()
-      expect(container.querySelectorAll('button')).toHaveLength(3) // ticks replaced
+      expect(container.querySelectorAll('button')).toHaveLength(6) // 3 rows × (summary + rewind)
       expect(container.textContent).toContain('first')
       expect(container.textContent).toContain('second')
       expect(container.textContent).toContain('third')
     })
   })
 
-  it('opens a confirm menu on row click and submits the rewind', async () => {
+  it('navigates when the directory summary is clicked', async () => {
+    const { container, scrollTo } = mount({
+      rows: [
+        { key: 'user:1', top: 100, bottom: 150 },
+        { key: 'user:2', top: 300, bottom: 350 },
+        { key: 'user:3', top: 500, bottom: 550 },
+      ],
+    })
+    await waitFor(() => {
+      expect(container.querySelectorAll('button')).toHaveLength(3)
+    })
+    fireEvent.focus([...container.querySelectorAll('button')][1]!)
+    await waitFor(() => {
+      expect(container.querySelector('[role="list"]')).not.toBeNull()
+    })
+    // Clicking the row's summary area (not the rewind button) navigates.
+    const summaryButton = [...container.querySelectorAll('button')]
+      .find(button => button.textContent === 'second')
+    fireEvent.click(summaryButton!)
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+    expect(scrollTo).toHaveBeenCalledWith({ top: 300, behavior: 'smooth' })
+  })
+
+  it('opens a confirm menu on rewind button click and submits the rewind', async () => {
     const { container, rewind } = mount({
       rows: [
         { key: 'user:1', top: 100, bottom: 150 },
@@ -331,8 +396,11 @@ describe('TocTail', () => {
     await waitFor(() => {
       expect(container.querySelector('[role="list"]')).not.toBeNull()
     })
-    // Clicking a directory row turns it into the confirm menu.
-    fireEvent.click([...container.querySelectorAll('[role="listitem"]')][1]!)
+    // The dedicated rewind button (not the row) opens the confirm menu.
+    const rewindButtons = [...container.querySelectorAll('button')]
+      .filter(button => button.getAttribute('aria-label') === zh['rewind.button'])
+    expect(rewindButtons).toHaveLength(3)
+    fireEvent.click(rewindButtons[1]!)
     await waitFor(() => {
       expect(container.textContent).toContain(zh['confirm.title'])
       expect(container.textContent).toContain(zh['confirm.code'])
@@ -363,7 +431,9 @@ describe('TocTail', () => {
     await waitFor(() => {
       expect(container.querySelector('[role="list"]')).not.toBeNull()
     })
-    fireEvent.click([...container.querySelectorAll('[role="listitem"]')][0]!)
+    const rewindButtons = [...container.querySelectorAll('button')]
+      .filter(button => button.getAttribute('aria-label') === zh['rewind.button'])
+    fireEvent.click(rewindButtons[0]!)
     await waitFor(() => {
       expect(container.textContent).toContain(zh['confirm.title'])
     })

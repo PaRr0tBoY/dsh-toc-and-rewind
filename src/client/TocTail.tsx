@@ -63,6 +63,11 @@ interface RailPlacement {
 
 const EMPTY_VIEW: TocView = { status: 'cold', entries: [] }
 
+const EMPTY_DERIVED = {
+  shadowedSeqs: new Set<number>(),
+  nodesByKey: new Map<string, number>(),
+}
+
 /**
  * Render the TOC Tail rail.
  * @param props - injected controller resolver and rewind submitter; `useSessions`/`t` ride the standard seats.
@@ -86,6 +91,9 @@ export function TocTail({ controllerFor, rewind, useSessions, t }: TocTailProps)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const entries = view.entries
+  // Snapshot-derived shadow state (rewound conversation) — same generation as
+  // the view above, so the two never disagree.
+  const derived = controller?.getDerived() ?? EMPTY_DERIVED
   // The longest request defines the tick scale: widest tick, others by ratio.
   const maxLength = entries.reduce((max, entry) => Math.max(max, entry.length), 0)
 
@@ -122,6 +130,19 @@ export function TocTail({ controllerFor, rewind, useSessions, t }: TocTailProps)
           }
         })
       setActiveKey(activeUserKey(rows, rect.top, rect.bottom))
+      // Hide the rewound conversation: a DOM node whose chat key maps to a
+      // shadowed seq (through the snapshot-derived key→seq bridge) collapses
+      // out of the flow. Inline style — React never sets `style` on these
+      // official rows, so the display value survives until the next measure.
+      const derivedState = controller?.getDerived()
+      if (derivedState !== undefined) {
+        for (const element of scrollport.querySelectorAll<HTMLElement>('[data-chat-anchor-key]')) {
+          const seq = element.dataset.chatAnchorKey === undefined
+            ? undefined
+            : derivedState.nodesByKey.get(element.dataset.chatAnchorKey)
+          element.style.display = seq !== undefined && derivedState.shadowedSeqs.has(seq) ? 'none' : ''
+        }
+      }
     }
     const schedule = (): void => {
       if (raf === 0) raf = requestAnimationFrame(() => { raf = 0; measure() })
@@ -251,18 +272,30 @@ export function TocTail({ controllerFor, rewind, useSessions, t }: TocTailProps)
               )
             }
             return (
-              <button
+              <div
                 key={entry.key}
-                type="button"
                 role="listitem"
                 className={index === hoverIndex ? css.directoryItemActive : css.directoryItem}
-                aria-current={index === hoverIndex ? 'true' : undefined}
-                onClick={() => openConfirm(index)}
                 onMouseEnter={() => setHoverIndex(index)}
                 onFocus={() => setHoverIndex(index)}
               >
-                <span className={css.directorySummary}>{summary}</span>
-              </button>
+                <button
+                  type="button"
+                  className={css.directorySummary}
+                  aria-label={label}
+                  onClick={() => jumpTo(entry.key)}
+                >
+                  <span className={css.directorySummaryText}>{summary}</span>
+                </button>
+                <button
+                  type="button"
+                  className={css.rewindButton}
+                  aria-label={t('rewind.button')}
+                  onClick={() => openConfirm(index)}
+                >
+                  ⏪
+                </button>
+              </div>
             )
           })}
         </div>
