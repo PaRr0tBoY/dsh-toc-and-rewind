@@ -1,0 +1,112 @@
+.rail {
+  position: fixed;
+  /* Vertically centered against the viewport, not the conversation column. */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  /* Ticks share their right edge; width varies with prompt length. The small
+     screen gap stays — the directory panel replaces the rail at the same
+     position, so it inherits the same offset. */
+  align-items: flex-end;
+  gap: 8px;
+  padding: 16px 10px;
+  /* The shell overlay layer is click-through; only the entries opt back in. */
+  pointer-events: none;
+}
+
+.tick,
+.tickActive {
+  /* width is set per-entry by tickWidthFor(entry.length); height stays fixed. */
+  height: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  pointer-events: auto;
+  background: var(--dsh-toc-tail-tick, color-mix(in srgb, currentColor 22%, transparent));
+  transition: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.tick:hover,
+.tick:focus-visible,
+.tickActive {
+  background: var(--dsh-toc-tail-tick-active, currentColor);
+  transform: scaleY(1.6);
+}
+
+.tick:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.tickActive {
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* Shared rounded directory panel: replaces the rail on hover/focus at the
+   same position, keeping the rail's small screen gap. */
+.directory {
+  width: 300px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--dsh-toc-tail-panel-bg, #ffffff);
+  color: var(--dsh-toc-tail-fg, #1f2328);
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.directoryItem,
+.directoryItemActive {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.directoryItem:hover,
+.directoryItem:focus-visible,
+.directoryItemActive {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.directoryItem:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.directoryIndex {
+  flex: none;
+  min-width: 2ch;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.directorySummary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick,
+  .tickActive {
+    transition: none;
+  }
+}

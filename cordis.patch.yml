@@ -1,0 +1,7 @@
+# dsh-toc-tail bundle patch: the host half is an empty apply, inserted so the
+# Loader recognizes the plugin. The browser half is discovered through
+# package.json dsh.client and exports["./client"].
+- insert:
+    - id: dsh-toc-tail
+      name: dsh-toc-tail
+      config: {}
