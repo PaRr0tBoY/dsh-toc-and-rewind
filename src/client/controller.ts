@@ -71,7 +71,7 @@ function textLength(node: UserMessageNode): number {
 }
 
 /** Narrowest / widest tick in px. */
-export const TICK_WIDTH_RANGE = { min: 16, max: 48 } as const
+export const TICK_WIDTH_RANGE = { min: 16, max: 32 } as const
 
 /**
  * Map a prompt's text length to a tick width in px, proportional to the

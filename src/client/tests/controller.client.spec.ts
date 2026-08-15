@@ -264,9 +264,9 @@ describe('tickWidthFor', () => {
   })
 
   it('scales proportionally to the longest message', () => {
-    expect(tickWidthFor(50, 100)).toBe(32) // half of the longest → mid-point
-    expect(tickWidthFor(100, 100)).toBe(48) // the longest → widest
-    expect(tickWidthFor(200, 100)).toBe(48) // clamps at the longest
+    expect(tickWidthFor(50, 100)).toBe(24) // half of the longest → mid-point
+    expect(tickWidthFor(100, 100)).toBe(32) // the longest → widest
+    expect(tickWidthFor(200, 100)).toBe(32) // clamps at the longest
   })
 
   it('handles an all-empty message set without dividing by zero', () => {
