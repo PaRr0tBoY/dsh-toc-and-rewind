@@ -14,6 +14,15 @@ tick column:  ───   ───────   ──   (one tick per user re
 - Click the rewind button on a row to open the confirm menu.
 - In the confirm menu, pick **Restore code** and/or **Summarize** (multi-select), then **Confirm** or **Cancel**.
 
+### Table Of Content
+A small toc tail at the side of chat
+<img width="1622" height="976" alt="1" src="https://github.com/user-attachments/assets/0a2f89d5-4f6d-464d-893e-c6b5ed9be0cf" />
+Hover to Expand
+<img width="1622" height="976" alt="2" src="https://github.com/user-attachments/assets/4437e4bc-9ba4-4066-bee1-4d25f418fe10" />
+Click rewind button to rewind code、conversion and summarize.
+<img width="1622" height="976" alt="3" src="https://github.com/user-attachments/assets/b526bb01-22b4-4b1e-8238-d53a3932b5f3" />
+
+
 ### Rewind
 
 Rewinding to a user request withdraws that message as if it was never sent: the message text is prefilled back into the composer, and the conversation is folded up to the previous request's assistant reply. Everything from the withdrawn message onward is collapsed.
