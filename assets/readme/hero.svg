@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="320" viewBox="0 0 1200 320"
+     role="img" aria-labelledby="title desc">
+  <title id="title">dsh-toc-tail</title>
+  <desc id="desc">A conversation outline rail for the DeepSeek Harness web interface: every user request becomes one tick, and the directory panel can rewind any request back into the composer.</desc>
+
+  <rect width="1200" height="320" fill="#0d0f12"/>
+
+  <!-- vertical guides: keep the composition on the project's grid -->
+  <line x1="660" y1="40" x2="660" y2="280" stroke="#1c1f24" stroke-width="1"/>
+  <line x1="1144" y1="40" x2="1144" y2="280" stroke="#1c1f24" stroke-width="1"/>
+
+  <g id="title-block" transform="translate(56 52)">
+    <text x="0" y="0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#9aa0a6" letter-spacing="1">DEEPSEEK HARNESS · WEB PLUGIN</text>
+    <text x="0" y="52" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="52" font-weight="700" fill="#e8eaed" letter-spacing="-1">dsh-toc-tail</text>
+    <text x="0" y="96" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="24" fill="#e8eaed">Every user request becomes one tick.</text>
+    <text x="0" y="128" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif" font-size="24" fill="#e8eaed">Rewind any of them back into the composer.</text>
+    <text x="0" y="172" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#9aa0a6">tick width ∝ message length · theme auto-follows</text>
+    <text x="0" y="214" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#9aa0a6">npm: dsh-toc-tail · v0.1.0 · MIT</text>
+  </g>
+
+  <!-- project-native motif: the right-aligned tick rail, one tick per user request -->
+  <g id="rail" transform="translate(880 0)">
+    <line x1="0" y1="40" x2="0" y2="280" stroke="#1c1f24" stroke-width="1"/>
+    <!-- ticks grow with message length; the active one is highlighted -->
+    <rect x="196" y="56"  width="68"  height="4" rx="2" fill="#3a3f47"/>
+    <rect x="168" y="80"  width="96"  height="4" rx="2" fill="#3a3f47"/>
+    <rect x="136" y="104" width="128" height="4" rx="2" fill="#3a3f47"/>
+    <rect x="96"  y="128" width="168" height="4" rx="2" fill="#3a3f47"/>
+    <rect x="52"  y="152" width="212" height="4" rx="2" fill="#6187d8"/>
+    <rect x="120" y="176" width="144" height="4" rx="2" fill="#3a3f47"/>
+    <rect x="176" y="200" width="88"  height="4" rx="2" fill="#3a3f47"/>
+    <rect x="208" y="224" width="56"  height="4" rx="2" fill="#3a3f47"/>
+    <rect x="148" y="248" width="116" height="4" rx="2" fill="#3a3f47"/>
+    <!-- active marker -->
+    <circle cx="36" cy="154" r="4" fill="#6187d8"/>
+  </g>
+</svg>

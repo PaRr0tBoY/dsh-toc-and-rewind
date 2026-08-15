@@ -2,28 +2,41 @@
 
 A conversation outline rail with rewind for the DeepSeek Harness web interface. Every user request becomes one tick in a vertical timeline at the conversation column's right edge; the directory panel can rewind to any user request, withdrawing it back to the composer.
 
-## Usage
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="dsh-toc-tail: every user request becomes one tick; rewind any of them back into the composer">
+</p>
 
-Each user request compresses into a horizontal tick. Tick width scales with the message length, and the longest request defines the scale. Hover or focus a tick to open a rounded directory panel listing every user request with its summary and a rewind button.
+## Screenshots
 
-```text
-tick column:  ───   ───────   ──   (one tick per user request)
-```
+The rail: one tick per user request, width proportional to message length.
 
-- Click a row's summary area to jump to that message.
-- Click the rewind button on a row to open the confirm menu.
-- In the confirm menu, pick **Restore code** and/or **Summarize** (multi-select), then **Confirm** or **Cancel**.
+<p align="center">
+  <img src="./assets/readme/screenshot-rail.png" width="100%" alt="The tick rail at the conversation column's right edge">
+</p>
 
-### Table Of Content
-A small toc tail at the side of chat
-<img width="1622" height="976" alt="1" src="https://github.com/user-attachments/assets/0a2f89d5-4f6d-464d-893e-c6b5ed9be0cf" />
-Hover to Expand
-<img width="1622" height="976" alt="2" src="https://github.com/user-attachments/assets/4437e4bc-9ba4-4066-bee1-4d25f418fe10" />
-Click rewind button to rewind code、conversion and summarize.
-<img width="1622" height="976" alt="3" src="https://github.com/user-attachments/assets/b526bb01-22b4-4b1e-8238-d53a3932b5f3" />
+Hover or focus a tick to open the directory panel listing every request with its summary.
 
+<p align="center">
+  <img src="./assets/readme/screenshot-directory.png" width="100%" alt="The directory panel expanded on hover, listing every user request">
+</p>
 
-### Rewind
+Each row carries a rewind button that opens the confirm menu: restore code and/or summarize, then confirm.
+
+<p align="center">
+  <img src="./assets/readme/screenshot-rewind.png" width="100%" alt="The rewind confirm menu with restore-code and summarize options">
+</p>
+
+## What it is
+
+A lightweight conversation outline for long sessions. Each user request compresses into one horizontal tick; the tick width scales with the message length, and the longest request defines the scale. Hover or focus a tick to open a rounded directory panel with every request's summary and a rewind button.
+
+## Why it works
+
+- **Tick width ∝ message length** — the longest request gets the widest tick, every other tick scales by its length ratio, so the rail reads like a map of the conversation.
+- **Paragraph-scoped highlighting** — the request whose paragraph is in the viewport stays highlighted; an assistant reply keeps its request's tick highlighted until the next request scrolls into view.
+- **Theme auto-follow** — the rail, directory, and rewind cards ride the theme tokens projected by the Harness (`--dsw-*`), so light/dark switching recolors the whole plugin instantly.
+
+## Rewind
 
 Rewinding to a user request withdraws that message as if it was never sent: the message text is prefilled back into the composer, and the conversation is folded up to the previous request's assistant reply. Everything from the withdrawn message onward is collapsed.
 
@@ -49,16 +62,12 @@ dsh plugin --profile web add https://github.com/PaRr0tBoY/dsh-toc-tail/archive/r
 
 Use the same command to update an existing installation. Restart `dsh web` after installation so the Host and browser client load the new version.
 
-## Theme
-
-The rail, directory panel, and rewind cards follow the DeepSeek Harness theme automatically: colors ride the theme tokens projected onto the document (`--dsw-*`), so switching light/dark themes recolors the whole plugin instantly with no configuration.
-
 ## Behavior Notes
 
 - The rail appears once the conversation has at least three user requests.
-- The tick of the request whose paragraph is in the viewport stays highlighted; an assistant reply keeps its request's tick highlighted until the next request scrolls into view.
-- Rewound requests lose their ticks and their flow rows are hidden.
 - The rail is vertically centered against the viewport and sits at the conversation column's right edge, keeping the screen's small edge gap.
+- Rewound requests lose their ticks and their flow rows are hidden.
+- Clicking a row's summary area jumps to that message; clicking the rewind button opens the confirm menu.
 
 ## Development
 
