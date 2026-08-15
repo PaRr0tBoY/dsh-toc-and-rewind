@@ -100,10 +100,11 @@ export function cutBalances(
 }
 
 /**
- * Select the fold region: every surface node strictly after the target user
- * request (the target node itself stays on the surface) up to the surface
- * tail. The region starts at the first tool-pairing-balanced cut after the
- * target so a fold never splits a tool-call/result pair.
+ * Select the fold region: every surface node from the target user request on
+ * (the selected message itself is withdrawn — revoked back to the composer,
+ * as if it was never sent), up to the surface tail. The region starts at the
+ * first tool-pairing-balanced cut at or after the target so a fold never
+ * splits a tool-call/result pair.
  * @param source - the session's events and surface.
  * @param targetSeq - event seq of the selected user request.
  * @returns the validated inclusive surface span.
@@ -119,16 +120,21 @@ export function selectRewindRegion(source: RegionSource, targetSeq: number): Rew
   if (!seqs.includes(targetSeq)) {
     throw new RewindError('INVALID_TARGET', `rewind target seq ${targetSeq} is not a current surface node`)
   }
+  const targetEvent = source.events[targetSeq]
+  if (targetEvent === undefined || targetEvent.type !== 'user/message') {
+    throw new RewindError('INVALID_TARGET', `rewind target seq ${targetSeq} is not a user request`)
+  }
   const cuts = cutBalances(source.events, seqs)
-  // First surface node after the target; skip to the next balanced cut so
-  // the fold never starts inside an open tool-call/result pair.
-  let startIdx = seqs.findIndex(seq => seq > targetSeq)
+  // First surface node at or after the target (the target itself folds);
+  // skip to the next balanced cut so the fold never starts inside an open
+  // tool-call/result pair.
+  let startIdx = seqs.findIndex(seq => seq >= targetSeq)
   if (startIdx === -1) {
-    throw new RewindError('EMPTY_REGION', `rewind: no surface nodes after seq ${targetSeq}`)
+    throw new RewindError('EMPTY_REGION', `rewind: no surface nodes at or after seq ${targetSeq}`)
   }
   while (startIdx < seqs.length && !cuts[startIdx]) startIdx += 1
   if (startIdx >= seqs.length) {
-    throw new RewindError('UNBALANCED', 'rewind: no balanced fold cut after the target node')
+    throw new RewindError('UNBALANCED', 'rewind: no balanced fold cut at or after the target node')
   }
   const endIdx = seqs.length - 1
   return {

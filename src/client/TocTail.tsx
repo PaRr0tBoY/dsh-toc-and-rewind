@@ -48,6 +48,12 @@ export interface TocTailInjected {
     seq: number,
     options: RewindOptions,
   ) => Promise<unknown>
+  /**
+   * Withdraw a withdrawn message's text back into the composer (the rewind
+   * target is revoked as if it was never sent). No-op while the composer
+   * bridge is absent.
+   */
+  prefill: (text: string) => void
 }
 
 /** Full props of one shell.overlay entry: runtime seat + injected face + locale. */
@@ -73,7 +79,7 @@ const EMPTY_DERIVED = {
  * @param props - injected controller resolver and rewind submitter; `useSessions`/`t` ride the standard seats.
  * @returns the rail, or null while hidden (no chat view, narrow column, no session).
  */
-export function TocTail({ controllerFor, rewind, useSessions, t }: TocTailProps): JSX.Element | null {
+export function TocTail({ controllerFor, rewind, prefill, useSessions, t }: TocTailProps): JSX.Element | null {
   const currentId = useSessions(state => state.current)
   const controller = currentId === undefined ? null : controllerFor(currentId)
   const view = useSyncExternalStore(
@@ -176,6 +182,9 @@ export function TocTail({ controllerFor, rewind, useSessions, t }: TocTailProps)
   /** Run the confirmed rewind for one entry through the injected submitter. */
   const runRewind = (entry: (typeof entries)[number], index: number): void => {
     if (currentId === undefined || busy) return
+    // Capture the target's full text before the fold withdraws it, so the
+    // composer can be prefilled with the revoked message on success.
+    const withdrawnText = controller?.textOf(entry.seq)
     setBusy(true)
     setError(null)
     void rewind(currentId, entry.seq, { code: confirmCode, summary: confirmSummary })
@@ -183,6 +192,7 @@ export function TocTail({ controllerFor, rewind, useSessions, t }: TocTailProps)
         setBusy(false)
         setConfirmIndex(null)
         setOpen(false)
+        if (withdrawnText !== undefined) prefill(withdrawnText)
       })
       .catch((reason: unknown) => {
         setBusy(false)

@@ -173,8 +173,18 @@ function mount(options: {
   const scrollTo = vi.fn()
   Object.defineProperty(scrollport, 'scrollTo', { value: scrollTo, configurable: true })
   const rewind = vi.fn<TocTailInjected['rewind']>().mockResolvedValue(undefined)
-  const view = render(<TocTail controllerFor={controllerFor} rewind={rewind} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
-  return { ...view, session, controller, controllerFor, rewind, scrollport, scrollTo }
+  const prefill = vi.fn<(text: string) => void>()
+  const view = render(
+    <TocTail
+      controllerFor={controllerFor}
+      rewind={rewind}
+      prefill={prefill}
+      useSessions={useSessions}
+      useWorkspaces={useWorkspaces}
+      t={translate}
+    />,
+  )
+  return { ...view, session, controller, controllerFor, rewind, prefill, scrollport, scrollTo }
 }
 
 describe('TocTail', () => {
@@ -212,7 +222,7 @@ describe('TocTail', () => {
     const listState = { ids: [], byId: {}, current: sid('s1'), phase: 'ready' as const, subagentsByParent: {}, jobsBySession: {} }
     const useSessions = ((selector: (state: typeof listState) => unknown) => selector(listState)) as never
     const useWorkspaces = (() => undefined) as never
-    const { container } = render(<TocTail controllerFor={controllerFor} rewind={() => Promise.resolve()} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
+    const { container } = render(<TocTail controllerFor={controllerFor} rewind={() => Promise.resolve()} prefill={() => {}} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
     await new Promise(resolve => setTimeout(resolve, 30))
     expect(container.querySelector('[role="navigation"]')).toBeNull()
     controller.dispose()
@@ -382,7 +392,7 @@ describe('TocTail', () => {
   })
 
   it('opens a confirm menu on rewind button click and submits the rewind', async () => {
-    const { container, rewind } = mount({
+    const { container, rewind, prefill } = mount({
       rows: [
         { key: 'user:1', top: 100, bottom: 150 },
         { key: 'user:2', top: 300, bottom: 350 },
@@ -415,6 +425,11 @@ describe('TocTail', () => {
     await waitFor(() => {
       expect(rewind).toHaveBeenCalledTimes(1)
       expect(rewind).toHaveBeenCalledWith(sid('s1'), 2, { code: true, summary: true })
+    })
+    // The withdrawn message's full text is prefilled into the composer.
+    await waitFor(() => {
+      expect(prefill).toHaveBeenCalledTimes(1)
+      expect(prefill).toHaveBeenCalledWith('second')
     })
     // The directory closes once the rewind settled.
     await waitFor(() => {
@@ -470,7 +485,7 @@ describe('TocTail', () => {
     const scrollport = mountScrollport([{ key: 'user:1', top: 100, bottom: 150 }])
     const scrollTo = vi.fn()
     Object.defineProperty(scrollport, 'scrollTo', { value: scrollTo, configurable: true })
-    const { unmount } = render(<TocTail controllerFor={controllerFor} rewind={() => Promise.resolve()} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
+    const { unmount } = render(<TocTail controllerFor={controllerFor} rewind={() => Promise.resolve()} prefill={() => {}} useSessions={useSessions} useWorkspaces={useWorkspaces} t={translate} />)
     await waitFor(() => {
       expect(controller.getSnapshot().status).toBe('ready')
     })

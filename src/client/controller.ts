@@ -11,6 +11,7 @@
 import type {
   ChatConversationViewNode, ConversationSnapshot, ObservableSnapshot, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 
 /** One user message compressed to a timeline tick. */
@@ -223,6 +224,28 @@ export class TocController implements HostObservable<TocView> {
 
   /** Return the cached immutable view. */
   getSnapshot = (): TocView => this.view
+
+  /**
+   * Return the full raw text of one user request by event seq (used to
+   * prefill the composer when a rewind withdraws it), or undefined when no
+   * user node carries that seq.
+   * @param seq - source event seq.
+   * @returns the joined text blocks, or undefined.
+   */
+  textOf(seq: number): string | undefined {
+    const snapshot = this.session.getSnapshot()
+    for (const node of snapshot.chat.nodes.values()) {
+      if (node.kind !== 'user') continue
+      const data = node.data as UserMessageNode
+      if (data.seq !== seq) continue
+      const text = data.content
+        .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+        .map(block => block.text)
+        .join('\n')
+      return text === '' ? undefined : text
+    }
+    return undefined
+  }
 
   /**
    * Return the snapshot-derived rail state (shadowed seqs + key→seq map),

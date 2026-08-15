@@ -50,19 +50,25 @@ describe('openTurnOf', () => {
 })
 
 describe('selectRewindRegion', () => {
-  it('folds every surface node after the target', () => {
+  it('folds the target request and everything after it', () => {
     const events = [user(0), assistantToolCall(1), toolResult(2), assistantText(3), user(4), assistantText(5)]
     const region = selectRewindRegion(source(events, [0, 1, 2, 3, 4, 5]), 0)
-    expect(region).toEqual({ start: 1, end: 5, shadowedSeqs: [1, 2, 3, 4, 5] })
+    expect(region).toEqual({ start: 0, end: 5, shadowedSeqs: [0, 1, 2, 3, 4, 5] })
   })
 
-  it('skips to the next balanced cut instead of splitting a pair', () => {
-    // user(0) targets a fold whose first following surface node is an
-    // assistant tool-call that started before the target: the fold starts
-    // only after the pair closes.
+  it('folds from a middle request, keeping earlier requests', () => {
+    const events = [user(0), assistantText(1), user(2), assistantText(3), user(4), assistantText(5)]
+    const region = selectRewindRegion(source(events, [0, 1, 2, 3, 4, 5]), 2)
+    expect(region).toEqual({ start: 2, end: 5, shadowedSeqs: [2, 3, 4, 5] })
+  })
+
+  it('keeps an open tool-call pair intact inside the folded span', () => {
+    // user(0) folds together with the assistant tool-call/result pair and
+    // the following text: the fold starts at the target's own balanced cut
+    // and never splits the pair.
     const events = [user(0), assistantToolCall(1), toolResult(2), assistantText(3)]
     const region = selectRewindRegion(source(events, [0, 1, 2, 3]), 0)
-    expect(region).toEqual({ start: 1, end: 3, shadowedSeqs: [1, 2, 3] })
+    expect(region).toEqual({ start: 0, end: 3, shadowedSeqs: [0, 1, 2, 3] })
   })
 
   it('rejects a target outside the current surface', () => {
@@ -70,7 +76,7 @@ describe('selectRewindRegion', () => {
     expect(() => selectRewindRegion(source(events, [0, 1]), 5)).toThrow(RewindError)
   })
 
-  it('rejects a target with nothing after it', () => {
+  it('rejects a non-user target', () => {
     const events = [user(0), assistantText(1)]
     expect(() => selectRewindRegion(source(events, [0, 1]), 1)).toThrow(RewindError)
   })

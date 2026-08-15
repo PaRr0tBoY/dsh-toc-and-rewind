@@ -19,6 +19,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { TocController } from './controller.ts'
 import { TocTail } from './TocTail.tsx'
 import type { TocTailInjected } from './TocTail.tsx'
+import type { InputBridge } from './InputBridge.tsx'
+import { registerInputBridge } from './InputBridge.tsx'
 import { en, zh } from './locales.ts'
 import { registerRewindMarker } from './rewind-node.tsx'
 
@@ -44,6 +46,12 @@ export function apply(ctx: ClientContext): void {
   // The fold replacement message renders as a marker card at the flow bottom;
   // its shadowed seqs drive the rail's hiding and pruning.
   registerRewindMarker(ctx)
+
+  // Composer write bridge: the root-scope rail cannot reach the session-scope
+  // inputActions face, so an invisible dock entry forwards it here (a rewind
+  // withdraws the target message back into the composer).
+  const bridge: InputBridge = { actions: null }
+  registerInputBridge(ctx, bridge)
 
   const controllers = new Map<SessionId, TocController>()
   const controllerFor = (sessionId: SessionId): TocController | null => {
@@ -84,6 +92,11 @@ export function apply(ctx: ClientContext): void {
           const flags = [options.code ? 'code' : '', options.summary ? 'summary' : '']
             .filter(Boolean).join(' ')
           return session.command(`/toc-rewind ${seq}${flags === '' ? '' : ` ${flags}`}`)
+        },
+        // Withdraw the target message back into the composer: the invisible
+        // dock bridge forwards the live inputActions face when present.
+        prefill: (text: string) => {
+          bridge.actions?.setDraft(text)
         },
       }),
     }, TocTail)

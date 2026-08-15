@@ -65,6 +65,21 @@
   pointer-events: auto;
 }
 
+/* Every panel surface uses border-box so width:100% + padding never overflows
+   the rounded panel (the directory rows were bleeding past the right edge and
+   clipping their corner radius). */
+.directory,
+.directoryItem,
+.directoryItemActive,
+.directorySummary,
+.rewindButton,
+.rewindMarker,
+.confirmMenu,
+.confirmButton,
+.confirmButtonPrimary {
+  box-sizing: border-box;
+}
+
 .directoryItem,
 .directoryItemActive {
   display: flex;
