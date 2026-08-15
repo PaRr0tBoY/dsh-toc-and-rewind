@@ -32,9 +32,9 @@ A lightweight conversation outline for long sessions. Each user request compress
 
 ## Why it works
 
-- **Tick width ∝ message length** — the longest request gets the widest tick, every other tick scales by its length ratio, so the rail reads like a map of the conversation.
-- **Paragraph-scoped highlighting** — the request whose paragraph is in the viewport stays highlighted; an assistant reply keeps its request's tick highlighted until the next request scrolls into view.
-- **Theme auto-follow** — the rail, directory, and rewind cards ride the theme tokens projected by the Harness (`--dsw-*`), so light/dark switching recolors the whole plugin instantly.
+- **Tick width ∝ message length**: the longest request gets the widest tick, every other tick scales by its length ratio, so the rail reads like a map of the conversation.
+- **Paragraph-scoped highlighting**: the request whose paragraph is in the viewport stays highlighted; an assistant reply keeps its request's tick highlighted until the next request scrolls into view.
+- **Theme auto-follow**: the rail, directory, and rewind cards ride the theme tokens projected by the Harness (`--dsw-*`), so light/dark switching recolors the whole plugin instantly.
 
 ## Rewind
 
